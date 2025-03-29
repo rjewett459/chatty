@@ -1,0 +1,829 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chatty Collaboration Portal</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="simplified.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .collaboration-container {
+            display: grid;
+            grid-template-columns: 250px 1fr;
+            height: calc(100vh - 70px);
+            margin-top: 70px;
+        }
+        
+        .sidebar {
+            background-color: #f5f7fa;
+            border-right: 1px solid var(--border-color);
+            padding: 1rem;
+            overflow-y: auto;
+        }
+        
+        .main-content {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+        
+        .room-list {
+            margin-bottom: 2rem;
+        }
+        
+        .room-list h3 {
+            font-size: 1rem;
+            margin-bottom: 0.5rem;
+            color: var(--text-light);
+        }
+        
+        .room-item {
+            padding: 0.75rem;
+            border-radius: 6px;
+            margin-bottom: 0.5rem;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        
+        .room-item:hover {
+            background-color: #e9ecef;
+        }
+        
+        .room-item.active {
+            background-color: var(--primary-color);
+            color: white;
+        }
+        
+        .user-list h3 {
+            font-size: 1rem;
+            margin-bottom: 0.5rem;
+            color: var(--text-light);
+        }
+        
+        .user-item {
+            display: flex;
+            align-items: center;
+            padding: 0.5rem;
+            border-radius: 6px;
+            margin-bottom: 0.25rem;
+        }
+        
+        .user-avatar {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background-color: var(--primary-color);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+            margin-right: 0.5rem;
+        }
+        
+        .create-room-btn {
+            width: 100%;
+            padding: 0.75rem;
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 500;
+            margin-bottom: 1rem;
+        }
+        
+        .create-room-btn:hover {
+            background-color: var(--primary-dark);
+        }
+        
+        .room-header {
+            padding: 1rem;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .room-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+        }
+        
+        .room-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+        
+        .action-btn {
+            padding: 0.5rem;
+            background-color: transparent;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            cursor: pointer;
+            color: var(--text-color);
+        }
+        
+        .action-btn:hover {
+            background-color: #f5f7fa;
+        }
+        
+        .share-btn {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+        }
+        
+        .share-btn:hover {
+            background-color: var(--primary-dark);
+        }
+        
+        .login-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            padding: 2rem;
+        }
+        
+        .login-form {
+            background-color: white;
+            padding: 2rem;
+            border-radius: 10px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 400px;
+        }
+        
+        .login-form h2 {
+            margin-bottom: 1.5rem;
+            text-align: center;
+        }
+        
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+        }
+        
+        .form-group input {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            font-size: 1rem;
+        }
+        
+        .login-btn {
+            width: 100%;
+            padding: 0.75rem;
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 500;
+            font-size: 1rem;
+        }
+        
+        .login-btn:hover {
+            background-color: var(--primary-dark);
+        }
+        
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            display: none;
+        }
+        
+        .modal-overlay.active {
+            display: flex;
+        }
+        
+        .modal-content {
+            background-color: white;
+            padding: 2rem;
+            border-radius: 10px;
+            width: 100%;
+            max-width: 500px;
+        }
+        
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+        
+        .modal-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+        }
+        
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: var(--text-light);
+        }
+        
+        .modal-body {
+            margin-bottom: 1.5rem;
+        }
+        
+        .modal-footer {
+            display: flex;
+            justify-content: flex-end;
+            gap: 1rem;
+        }
+        
+        .modal-btn {
+            padding: 0.75rem 1.5rem;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 500;
+        }
+        
+        .modal-btn.primary {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+        }
+        
+        .modal-btn.secondary {
+            background-color: transparent;
+            border: 1px solid var(--border-color);
+            color: var(--text-color);
+        }
+        
+        @media (max-width: 768px) {
+            .collaboration-container {
+                grid-template-columns: 1fr;
+            }
+            
+            .sidebar {
+                display: none;
+            }
+            
+            .sidebar.active {
+                display: block;
+                position: fixed;
+                top: 70px;
+                left: 0;
+                bottom: 0;
+                width: 250px;
+                z-index: 100;
+            }
+            
+            .mobile-menu-btn {
+                display: block;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="login-view" class="login-container">
+        <div class="login-form">
+            <h2>Chatty Collaboration Portal</h2>
+            <div class="form-group">
+                <label for="username">Your Name</label>
+                <input type="text" id="username" placeholder="Enter your name">
+            </div>
+            <button id="login-btn" class="login-btn">Enter Portal</button>
+        </div>
+    </div>
+    
+    <div id="collaboration-view" style="display: none;">
+        <header>
+            <div class="container">
+                <div class="logo">
+                    <h1>Chatty</h1>
+                    <span class="tagline">Collaboration Portal</span>
+                </div>
+                <nav>
+                    <ul>
+                        <li><a href="#" id="user-display"></a></li>
+                        <li><a href="#" id="logout-btn">Logout</a></li>
+                    </ul>
+                </nav>
+            </div>
+        </header>
+        
+        <div class="collaboration-container">
+            <div class="sidebar">
+                <button id="create-room-btn" class="create-room-btn">
+                    <i class="fas fa-plus"></i> Create New Room
+                </button>
+                
+                <div class="room-list">
+                    <h3>Your Rooms</h3>
+                    <div id="room-list-container">
+                        <!-- Room items will be added here -->
+                    </div>
+                </div>
+                
+                <div class="user-list">
+                    <h3>Active Users</h3>
+                    <div id="user-list-container">
+                        <!-- User items will be added here -->
+                    </div>
+                </div>
+            </div>
+            
+            <div class="main-content">
+                <div id="welcome-message" style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; padding: 2rem;">
+                    <h2>Welcome to Chatty Collaboration Portal</h2>
+                    <p>Select a room from the sidebar or create a new one to get started.</p>
+                </div>
+                
+                <div id="room-content" style="display: none; height: 100%;">
+                    <div class="room-header">
+                        <div class="room-title" id="current-room-title">Room Name</div>
+                        <div class="room-actions">
+                            <button class="action-btn" id="invite-btn">
+                                <i class="fas fa-user-plus"></i> Invite
+                            </button>
+                            <button class="action-btn share-btn" id="share-transcript-btn">
+                                <i class="fas fa-share-alt"></i> Share Transcript
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="chatty-container" style="flex: 1; margin: 0; border-radius: 0;">
+                        <div class="chatty-interface" style="height: 100%; border-radius: 0;">
+                            <div class="transcript-container" style="flex: 1;">
+                                <div id="transcript" class="transcript"></div>
+                            </div>
+                            <div class="chatty-controls">
+                                <button id="start-button" class="control-button primary">Start Conversation</button>
+                                <button id="stop-button" class="control-button secondary" disabled>End Conversation</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Create Room Modal -->
+    <div id="create-room-modal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title">Create New Room</div>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="room-name">Room Name</label>
+                    <input type="text" id="room-name" placeholder="Enter room name">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="modal-btn secondary modal-cancel">Cancel</button>
+                <button class="modal-btn primary" id="create-room-submit">Create Room</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Invite Modal -->
+    <div id="invite-modal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title">Invite to Room</div>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p>Share this link with your business partner:</p>
+                <div class="form-group">
+                    <input type="text" id="invite-link" readonly>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="modal-btn secondary modal-cancel">Close</button>
+                <button class="modal-btn primary" id="copy-link-btn">Copy Link</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Share Transcript Modal -->
+    <div id="share-transcript-modal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title">Share Transcript</div>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="recipient-email">Email</label>
+                    <input type="email" id="recipient-email" placeholder="Enter recipient email">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="modal-btn secondary modal-cancel">Cancel</button>
+                <button class="modal-btn primary" id="send-transcript-btn">Send Transcript</button>
+            </div>
+        </div>
+    </div>
+    
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <script src="chatty-client.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize variables
+            const serverUrl = window.location.origin;
+            let chattyClient = null;
+            let currentUser = null;
+            let currentRoom = null;
+            let socket = io(serverUrl);
+            
+            // DOM Elements - Views
+            const loginView = document.getElementById('login-view');
+            const collaborationView = document.getElementById('collaboration-view');
+            const welcomeMessage = document.getElementById('welcome-message');
+            const roomContent = document.getElementById('room-content');
+            
+            // DOM Elements - Login
+            const usernameInput = document.getElementById('username');
+            const loginBtn = document.getElementById('login-btn');
+            
+            // DOM Elements - Header
+            const userDisplay = document.getElementById('user-display');
+            const logoutBtn = document.getElementById('logout-btn');
+            
+            // DOM Elements - Sidebar
+            const createRoomBtn = document.getElementById('create-room-btn');
+            const roomListContainer = document.getElementById('room-list-container');
+            const userListContainer = document.getElementById('user-list-container');
+            
+            // DOM Elements - Room
+            const currentRoomTitle = document.getElementById('current-room-title');
+            const inviteBtn = document.getElementById('invite-btn');
+            const shareTranscriptBtn = document.getElementById('share-transcript-btn');
+            const startButton = document.getElementById('start-button');
+            const stopButton = document.getElementById('stop-button');
+            const transcript = document.getElementById('transcript');
+            
+            // DOM Elements - Modals
+            const createRoomModal = document.getElementById('create-room-modal');
+            const roomNameInput = document.getElementById('room-name');
+            const createRoomSubmit = document.getElementById('create-room-submit');
+            const inviteModal = document.getElementById('invite-modal');
+            const inviteLink = document.getElementById('invite-link');
+            const copyLinkBtn = document.getElementById('copy-link-btn');
+            const shareTranscriptModal = document.getElementById('share-transcript-modal');
+            const recipientEmailInput = document.getElementById('recipient-email');
+            const sendTranscriptBtn = document.getElementById('send-transcript-btn');
+            const modalCloseButtons = document.querySelectorAll('.modal-close, .modal-cancel');
+            
+            // Generate a unique user ID
+            function generateUserId() {
+                return 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+            }
+            
+            // Generate a unique room ID
+            function generateRoomId() {
+                return 'room_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+            }
+            
+            // Initialize Chatty Client
+            async function initializeChatty() {
+                if (chattyClient) {
+                    chattyClient.dispose();
+                }
+                
+                chattyClient = new ChattyClient();
+                
+                try {
+                    await chattyClient.initialize(serverUrl, document.getElementById('status-text'), document.getElementById('status-indicator'), transcript);
+                    return true;
+                } catch (error) {
+                    console.error('Failed to initialize Chatty client:', error);
+                    return false;
+                }
+            }
+            
+            // Start Chatty Session
+            async function startChatty() {
+                if (!chattyClient) {
+                    const initialized = await initializeChatty();
+                    if (!initialized) return;
+                }
+                
+                try {
+                    await chattyClient.startSession();
+                    
+                    // Update UI
+                    startButton.disabled = true;
+                    stopButton.disabled = false;
+                } catch (error) {
+                    console.error('Failed to start Chatty session:', error);
+                }
+            }
+            
+            // Stop Chatty Session
+            function stopChatty() {
+                if (!chattyClient) return;
+                
+                chattyClient.endSession();
+                
+                // Update UI
+                startButton.disabled = false;
+                stopButton.disabled = true;
+            }
+            
+            // Handle login
+            loginBtn.addEventListener('click', function() {
+                const username = usernameInput.value.trim();
+                if (!username) {
+                    alert('Please enter your name');
+                    return;
+                }
+                
+                // Generate user ID
+                const userId = generateUserId();
+                
+                // Set current user
+                currentUser = {
+                    id: userId,
+                    name: username
+                };
+                
+                // Register with server
+                socket.emit('register_user', {
+                    userId: userId,
+                    userName: username
+                });
+                
+                // Update UI
+                userDisplay.textContent = username;
+                loginView.style.display = 'none';
+                collaborationView.style.display = 'block';
+            });
+            
+            // Handle logout
+            logoutBtn.addEventListener('click', function() {
+                // Clean up
+                if (chattyClient) {
+                    chattyClient.dispose();
+                    chattyClient = null;
+                }
+                
+                if (currentRoom) {
+                    socket.emit('leave_room', {
+                        roomId: currentRoom.id,
+                        userId: currentUser.id
+                    });
+                    currentRoom = null;
+                }
+                
+                currentUser = null;
+                
+                // Update UI
+                loginView.style.display = 'flex';
+                collaborationView.style.display = 'none';
+                usernameInput.value = '';
+            });
+            
+            // Handle create room button
+            createRoomBtn.addEventListener('click', function() {
+                roomNameInput.value = '';
+                createRoomModal.classList.add('active');
+            });
+            
+            // Handle create room submit
+            createRoomSubmit.addEventListener('click', function() {
+                const roomName = roomNameInput.value.trim();
+                if (!roomName) {
+                    alert('Please enter a room name');
+                    return;
+                }
+                
+                // Generate room ID
+                const roomId = generateRoomId();
+                
+                // Create room
+                socket.emit('create_room', {
+                    roomId: roomId,
+                    userId: currentUser.id,
+                    roomName: roomName
+                });
+                
+                // Close modal
+                createRoomModal.classList.remove('active');
+            });
+            
+            // Handle invite button
+            inviteBtn.addEventListener('click', function() {
+                if (!currentRoom) return;
+                
+                // Generate invite link
+                const inviteUrl = `${window.location.origin}${window.location.pathname}?room=${currentRoom.id}`;
+                inviteLink.value = inviteUrl;
+                
+                // Show modal
+                inviteModal.classList.add('active');
+            });
+            
+            // Handle copy link button
+            copyLinkBtn.addEventListener('click', function() {
+                inviteLink.select();
+                document.execCommand('copy');
+                alert('Link copied to clipboard');
+            });
+            
+            // Handle share transcript button
+            shareTranscriptBtn.addEventListener('click', function() {
+                recipientEmailInput.value = '';
+                shareTranscriptModal.classList.add('active');
+            });
+            
+            // Handle send transcript button
+            sendTranscriptBtn.addEventListener('click', function() {
+                const email = recipientEmailInput.value.trim();
+                if (!email) {
+                    alert('Please enter an email address');
+                    return;
+                }
+                
+                // Get transcript
+                const transcriptText = Array.from(transcript.children)
+                    .map(el => el.textContent)
+                    .join('\n');
+                
+                // Send to server
+                socket.emit('share_transcript', {
+                    roomId: currentRoom.id,
+                    message: {
+                        type: 'email',
+                        sender: currentUser.id,
+                        recipient: email,
+                        content: transcriptText
+                    }
+                });
+                
+                // Close modal
+                shareTranscriptModal.classList.remove('active');
+                alert('Transcript sent successfully');
+            });
+            
+            // Close modals
+            modalCloseButtons.forEach(button => {
+                button.addEventListener('click', function() {
+                    createRoomModal.classList.remove('active');
+                    inviteModal.classList.remove('active');
+                    shareTranscriptModal.classList.remove('active');
+                });
+            });
+            
+            // Handle room selection
+            function selectRoom(room) {
+                if (currentRoom) {
+                    // Leave current room
+                    socket.emit('leave_room', {
+                        roomId: currentRoom.id,
+                        userId: currentUser.id
+                    });
+                }
+                
+                // Set current room
+                currentRoom = room;
+                
+                // Join room
+                socket.emit('join_room', {
+                    roomId: room.id,
+                    userId: currentUser.id
+                });
+                
+                // Update UI
+                currentRoomTitle.textContent = room.name;
+                welcomeMessage.style.display = 'none';
+                roomContent.style.display = 'flex';
+                
+                // Update room list
+                updateRoomList();
+                
+                // Initialize Chatty
+                initializeChatty();
+            }
+            
+            // Update room list
+            function updateRoomList() {
+                // Clear container
+                roomListContainer.innerHTML = '';
+                
+                // Add rooms
+                socket.emit('get_user_rooms', { userId: currentUser.id });
+            }
+            
+            // Socket event handlers
+            socket.on('user_registered', function(data) {
+                console.log('User registered:', data.user);
+                
+                // Update room list
+                updateRoomList();
+            });
+            
+            socket.on('rooms_list', function(data) {
+                // Clear container
+                roomListContainer.innerHTML = '';
+                
+                // Add rooms
+                data.rooms.forEach(room => {
+                    const roomItem = document.createElement('div');
+                    roomItem.className = 'room-item';
+                    if (currentRoom && room.id === currentRoom.id) {
+                        roomItem.classList.add('active');
+                    }
+                    roomItem.textContent = room.name;
+                    roomItem.addEventListener('click', function() {
+                        selectRoom(room);
+                    });
+                    roomListContainer.appendChild(roomItem);
+                });
+            });
+            
+            socket.on('room_created', function(data) {
+                console.log('Room created:', data.room);
+                
+                // Select the new room
+                selectRoom(data.room);
+            });
+            
+            socket.on('room_joined', function(data) {
+                console.log('Room joined:', data.room);
+                
+                // Update transcript
+                if (data.transcript && data.transcript.length > 0) {
+                    // Clear transcript
+                    transcript.innerHTML = '';
+                    
+                    // Add messages
+                    data.transcript.forEach(message => {
+                        if (message.role) {
+                            const messageEl = document.createElement('div');
+                            messageEl.className = `message ${message.role}`;
+                            messageEl.textContent = message.content;
+                            transcript.appendChild(messageEl);
+                        }
+                    });
+                }
+            });
+            
+            socket.on('user_joined', function(data) {
+                console.log('User joined:', data);
+                
+                // Update user list
+                // This would be implemented in a real application
+            });
+            
+            socket.on('transcript_update', function(data) {
+                console.log('Transcript update:', data);
+                
+                // Add message to transcript if it's a chat message
+                if (data.message.role) {
+                    const messageEl = document.createElement('div');
+                    messageEl.className = `message ${data.message.role}`;
+                    messageEl.textContent = data.message.content;
+                    transcript.appendChild(messageEl);
+                }
+            });
+            
+            // Check for room ID in URL
+            function checkUrlForRoom() {
+                const urlParams = new URLSearchParams(window.location.search);
+                const roomId = urlParams.get('room');
+                
+                if (roomId) {
+                    // We'll handle this after login
+                    return roomId;
+                }
+                
+                return null;
+            }
+            
+            // Initialize
+            const roomIdFromUrl = checkUrlForRoom();
+            
+            // Handle Chatty buttons
+            startButton.addEventListener('click', startChatty);
+            stopButton.addEventListener('click', stopChatty);
+        });
+    </script>
+</body>
+</html>

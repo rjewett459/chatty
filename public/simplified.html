@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chatty AI Assistant</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="simplified.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="simplified-interface focus-mode">
+        <div class="chatty-container">
+            <div class="chatty-interface">
+                <div class="chatty-header">
+                    <div class="chatty-status">
+                        <span id="status-indicator" class="status-indicator"></span>
+                        <span id="status-text">Ready</span>
+                    </div>
+                </div>
+                <div class="transcript-container">
+                    <div id="transcript" class="transcript"></div>
+                </div>
+                <div class="chatty-controls">
+                    <button id="start-button" class="control-button primary">Start Conversation</button>
+                    <button id="stop-button" class="control-button secondary" disabled>End Conversation</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Floating button for embedded mode -->
+    <div id="chatty-button" class="floating-button">
+        <i class="fas fa-microphone"></i>
+    </div>
+
+    <!-- Embedded chatty interface -->
+    <div id="embedded-chatty" class="embedded-chatty">
+        <div class="chatty-interface">
+            <div class="chatty-header" id="embedded-header">
+                <div class="chatty-status">
+                    <span id="embedded-status-indicator" class="status-indicator"></span>
+                    <span id="embedded-status-text">Ready</span>
+                </div>
+            </div>
+            <div class="transcript-container">
+                <div id="embedded-transcript" class="transcript"></div>
+            </div>
+            <div class="chatty-controls">
+                <button id="embedded-start-button" class="control-button primary">Start</button>
+                <button id="embedded-stop-button" class="control-button secondary" disabled>End</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <script src="chatty-client.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize variables
+            const serverUrl = 'https://api.chatty-ai-portal.com'; // Will be replaced with actual deployment URL
+            let chattyClient = null;
+            let embeddedClient = null;
+            let isEmbeddedActive = false;
+            let isEmbeddedMinimized = false;
+            
+            // DOM Elements - Main Interface
+            const startButton = document.getElementById('start-button');
+            const stopButton = document.getElementById('stop-button');
+            const statusIndicator = document.getElementById('status-indicator');
+            const statusText = document.getElementById('status-text');
+            const transcript = document.getElementById('transcript');
+            
+            // DOM Elements - Embedded Interface
+            const chattyButton = document.getElementById('chatty-button');
+            const embeddedChatty = document.getElementById('embedded-chatty');
+            const embeddedHeader = document.getElementById('embedded-header');
+            const embeddedStartButton = document.getElementById('embedded-start-button');
+            const embeddedStopButton = document.getElementById('embedded-stop-button');
+            const embeddedStatusIndicator = document.getElementById('embedded-status-indicator');
+            const embeddedStatusText = document.getElementById('embedded-status-text');
+            const embeddedTranscript = document.getElementById('embedded-transcript');
+            
+            // Initialize Main Chatty Client
+            async function initializeMainClient() {
+                if (chattyClient) {
+                    chattyClient.dispose();
+                }
+                
+                chattyClient = new ChattyClient();
+                
+                try {
+                    await chattyClient.initialize(serverUrl, statusText, statusIndicator, transcript);
+                    return true;
+                } catch (error) {
+                    console.error('Failed to initialize main Chatty client:', error);
+                    return false;
+                }
+            }
+            
+            // Initialize Embedded Chatty Client
+            async function initializeEmbeddedClient() {
+                if (embeddedClient) {
+                    embeddedClient.dispose();
+                }
+                
+                embeddedClient = new ChattyClient();
+                
+                try {
+                    await embeddedClient.initialize(serverUrl, embeddedStatusText, embeddedStatusIndicator, embeddedTranscript);
+                    return true;
+                } catch (error) {
+                    console.error('Failed to initialize embedded Chatty client:', error);
+                    return false;
+                }
+            }
+            
+            // Start Main Chatty Session
+            async function startMainChatty() {
+                if (!chattyClient) {
+                    const initialized = await initializeMainClient();
+                    if (!initialized) return;
+                }
+                
+                try {
+                    await chattyClient.startSession();
+                    
+                    // Update UI
+                    startButton.disabled = true;
+                    stopButton.disabled = false;
+                } catch (error) {
+                    console.error('Failed to start main Chatty session:', error);
+                }
+            }
+            
+            // Stop Main Chatty Session
+            function stopMainChatty() {
+                if (!chattyClient) return;
+                
+                chattyClient.endSession();
+                
+                // Update UI
+                startButton.disabled = false;
+                stopButton.disabled = true;
+            }
+            
+            // Start Embedded Chatty Session
+            async function startEmbeddedChatty() {
+                if (!embeddedClient) {
+                    const initialized = await initializeEmbeddedClient();
+                    if (!initialized) return;
+                }
+                
+                try {
+                    await embeddedClient.startSession();
+                    
+                    // Update UI
+                    embeddedStartButton.disabled = true;
+                    embeddedStopButton.disabled = false;
+                } catch (error) {
+                    console.error('Failed to start embedded Chatty session:', error);
+                }
+            }
+            
+            // Stop Embedded Chatty Session
+            function stopEmbeddedChatty() {
+                if (!embeddedClient) return;
+                
+                embeddedClient.endSession();
+                
+                // Update UI
+                embeddedStartButton.disabled = false;
+                embeddedStopButton.disabled = true;
+            }
+            
+            // Toggle Embedded Chatty
+            function toggleEmbeddedChatty() {
+                if (isEmbeddedActive) {
+                    // If already active, toggle minimized state
+                    isEmbeddedMinimized = !isEmbeddedMinimized;
+                    embeddedChatty.classList.toggle('minimized', isEmbeddedMinimized);
+                } else {
+                    // Activate embedded chatty
+                    isEmbeddedActive = true;
+                    isEmbeddedMinimized = false;
+                    embeddedChatty.classList.add('active');
+                    embeddedChatty.classList.remove('minimized');
+                    
+                    // Initialize if needed
+                    if (!embeddedClient) {
+                        initializeEmbeddedClient();
+                    }
+                }
+            }
+            
+            // Close Embedded Chatty
+            function closeEmbeddedChatty() {
+                isEmbeddedActive = false;
+                embeddedChatty.classList.remove('active');
+                
+                // Stop session if active
+                if (embeddedClient) {
+                    stopEmbeddedChatty();
+                }
+            }
+            
+            // Event Listeners - Main Interface
+            if (startButton) {
+                startButton.addEventListener('click', startMainChatty);
+            }
+            
+            if (stopButton) {
+                stopButton.addEventListener('click', stopMainChatty);
+            }
+            
+            // Event Listeners - Embedded Interface
+            if (chattyButton) {
+                chattyButton.addEventListener('click', toggleEmbeddedChatty);
+            }
+            
+            if (embeddedHeader) {
+                embeddedHeader.addEventListener('click', function() {
+                    isEmbeddedMinimized = !isEmbeddedMinimized;
+                    embeddedChatty.classList.toggle('minimized', isEmbeddedMinimized);
+                });
+            }
+            
+            if (embeddedStartButton) {
+                embeddedStartButton.addEventListener('click', startEmbeddedChatty);
+            }
+            
+            if (embeddedStopButton) {
+                embeddedStopButton.addEventListener('click', stopEmbeddedChatty);
+            }
+            
+            // Close embedded chatty when clicking outside
+            document.addEventListener('click', function(event) {
+                if (isEmbeddedActive && 
+                    !embeddedChatty.contains(event.target) && 
+                    !chattyButton.contains(event.target)) {
+                    closeEmbeddedChatty();
+                }
+            });
+            
+            // Initialize main interface if present
+            if (transcript && startButton && stopButton) {
+                initializeMainClient();
+            }
+        });
+    </script>
+</body>
+</html>

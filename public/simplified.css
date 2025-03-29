@@ -1,0 +1,130 @@
+/* Additional styles for simplified frontend */
+
+/* Hide advanced settings by default */
+.admin-settings {
+  display: none;
+}
+
+/* Show admin settings only when admin mode is active */
+body.admin-mode .admin-settings {
+  display: block;
+}
+
+/* Simplified interface styles */
+.simplified-interface {
+  max-width: 600px;
+  margin: 0 auto;
+  padding: 20px;
+  background-color: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+}
+
+/* Focus mode for the chatty interface */
+.focus-mode .chatty-interface {
+  height: 500px;
+}
+
+.focus-mode .transcript-container {
+  height: 350px;
+}
+
+/* Floating button styles */
+.floating-button {
+  position: fixed;
+  bottom: 30px;
+  right: 30px;
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background-color: var(--primary-color);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+  cursor: pointer;
+  transition: all 0.3s ease;
+  z-index: 99;
+}
+
+.floating-button:hover {
+  transform: scale(1.1);
+  box-shadow: 0 6px 15px rgba(0, 0, 0, 0.25);
+}
+
+.floating-button i {
+  font-size: 24px;
+}
+
+/* Pulse animation for status indicator */
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.2);
+    opacity: 0.7;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* Blink animation for connecting status */
+@keyframes blink {
+  0% {
+    opacity: 0.3;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0.3;
+  }
+}
+
+/* Embedded mode styles */
+.embedded-chatty {
+  position: fixed;
+  bottom: 100px;
+  right: 30px;
+  width: 350px;
+  height: 500px;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+  z-index: 98;
+  display: none;
+}
+
+.embedded-chatty.active {
+  display: block;
+}
+
+/* Minimized state */
+.embedded-chatty.minimized {
+  height: 60px;
+}
+
+.embedded-chatty .chatty-header {
+  cursor: pointer;
+}
+
+/* Mobile optimizations */
+@media (max-width: 480px) {
+  .embedded-chatty {
+    width: 100%;
+    height: 100%;
+    bottom: 0;
+    right: 0;
+    border-radius: 0;
+  }
+  
+  .floating-button {
+    bottom: 20px;
+    right: 20px;
+  }
+}

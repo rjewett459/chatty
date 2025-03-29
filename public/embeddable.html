@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en" class="dark-mode">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chatty - Voice-First AI Portal</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="dark-mode.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="dark-mode">
+    <!-- Embeddable Widget -->
+    <div class="chatty-widget bottom-right">
+        <div class="chatty-button" id="chatty-button">
+            <i class="fas fa-microphone"></i>
+            <span>Talk to Chatty</span>
+        </div>
+    </div>
+    
+    <!-- Chatty Modal -->
+    <div class="chatty-modal" id="chatty-modal">
+        <div class="chatty-modal-content">
+            <div class="chatty-container">
+                <div class="chatty-interface">
+                    <div class="chatty-header">
+                        <div class="chatty-status">
+                            <span id="status-indicator" class="status-indicator"></span>
+                            <span id="status-text">Ready</span>
+                        </div>
+                        <div class="chatty-close" id="chatty-close">
+                            <i class="fas fa-times"></i>
+                        </div>
+                    </div>
+                    <div class="transcript-container">
+                        <div id="transcript" class="transcript"></div>
+                    </div>
+                    <div class="chatty-controls">
+                        <button id="start-button" class="control-button primary">Start Conversation</button>
+                        <button id="stop-button" class="control-button secondary" disabled>End Conversation</button>
+                    </div>
+                    
+                    <!-- CTA Form (hidden by default) -->
+                    <div class="cta-form" id="cta-form" style="display: none;">
+                        <h3>Schedule a chat with our founders</h3>
+                        <div class="form-group">
+                            <label for="name">Your Name</label>
+                            <input type="text" id="name" placeholder="Enter your name">
+                        </div>
+                        <div class="form-group">
+                            <label for="email">Email Address</label>
+                            <input type="email" id="email" placeholder="Enter your email">
+                        </div>
+                        <div class="form-group">
+                            <label for="time-slot">Preferred Time</label>
+                            <select id="time-slot">
+                                <option value="">Select a time slot</option>
+                                <option value="morning">Morning (9am - 12pm)</option>
+                                <option value="afternoon">Afternoon (1pm - 5pm)</option>
+                                <option value="evening">Evening (6pm - 8pm)</option>
+                            </select>
+                        </div>
+                        <button id="schedule-button">Schedule Call</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <script src="updated-chatty-client.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize variables
+            const serverUrl = 'https://3000-iftjw8vt7txltdc13l1ra-4bee712f.manus.computer';
+            let chattyClient = null;
+            
+            // DOM Elements
+            const chattyButton = document.getElementById('chatty-button');
+            const chattyModal = document.getElementById('chatty-modal');
+            const chattyClose = document.getElementById('chatty-close');
+            const startButton = document.getElementById('start-button');
+            const stopButton = document.getElementById('stop-button');
+            const statusIndicator = document.getElementById('status-indicator');
+            const statusText = document.getElementById('status-text');
+            const transcript = document.getElementById('transcript');
+            const ctaForm = document.getElementById('cta-form');
+            const scheduleButton = document.getElementById('schedule-button');
+            
+            // Initialize Chatty Client
+            async function initializeChatty() {
+                if (chattyClient) {
+                    chattyClient.dispose();
+                }
+                
+                chattyClient = new ChattyClient();
+                
+                try {
+                    // Initialize with options
+                    await chattyClient.initialize(serverUrl, statusText, statusIndicator, transcript, {
+                        personality: 'cheerful_guide',
+                        sessionDuration: 60000, // 60 seconds
+                        ctaTriggerTime: 45000, // 45 seconds
+                        onCTATrigger: showCTAForm,
+                        onSessionEnd: handleSessionEnd
+                    });
+                    
+                    return true;
+                } catch (error) {
+                    console.error('Failed to initialize Chatty client:', error);
+                    return false;
+                }
+            }
+            
+            // Start Chatty Session
+            async function startChatty() {
+                if (!chattyClient) {
+                    const initialized = await initializeChatty();
+                    if (!initialized) return;
+                }
+                
+                try {
+                    await chattyClient.startSession();
+                    
+                    // Update UI
+                    startButton.disabled = true;
+                    stopButton.disabled = false;
+                    ctaForm.style.display = 'none';
+                } catch (error) {
+                    console.error('Failed to start Chatty session:', error);
+                }
+            }
+            
+            // Stop Chatty Session
+            function stopChatty() {
+                if (!chattyClient) return;
+                
+                chattyClient.endSession();
+                
+                // Update UI
+                startButton.disabled = false;
+                stopButton.disabled = true;
+            }
+            
+            // Show CTA Form
+            function showCTAForm() {
+                ctaForm.style.display = 'block';
+            }
+            
+            // Handle Session End
+            function handleSessionEnd(transcriptData) {
+                console.log('Session ended with transcript:', transcriptData);
+                
+                // Update UI
+                startButton.disabled = false;
+                stopButton.disabled = true;
+                
+                // Show CTA form if not already shown
+                if (ctaForm.style.display === 'none') {
+                    showCTAForm();
+                }
+            }
+            
+            // Handle Schedule Button
+            function handleSchedule() {
+                const name = document.getElementById('name').value.trim();
+                const email = document.getElementById('email').value.trim();
+                const timeSlot = document.getElementById('time-slot').value;
+                
+                if (!name || !email || !timeSlot) {
+                    alert('Please fill in all fields');
+                    return;
+                }
+                
+                // Send transcript to email
+                if (chattyClient) {
+                    chattyClient.sendTranscriptByEmail(email);
+                }
+                
+                // Show confirmation
+                alert('Thank you! Your call has been scheduled. A confirmation email will be sent shortly.');
+                
+                // Reset form
+                document.getElementById('name').value = '';
+                document.getElementById('email').value = '';
+                document.getElementById('time-slot').value = '';
+                
+                // Hide CTA form
+                ctaForm.style.display = 'none';
+            }
+            
+            // Show Chatty Modal
+            function showChattyModal() {
+                chattyModal.classList.add('active');
+                initializeChatty();
+            }
+            
+            // Hide Chatty Modal
+            function hideChattyModal() {
+                chattyModal.classList.remove('active');
+                
+                // Stop session if active
+                if (chattyClient) {
+                    stopChatty();
+                }
+            }
+            
+            // Event Listeners
+            chattyButton.addEventListener('click', showChattyModal);
+            chattyClose.addEventListener('click', hideChattyModal);
+            startButton.addEventListener('click', startChatty);
+            stopButton.addEventListener('click', stopChatty);
+            scheduleButton.addEventListener('click', handleSchedule);
+        });
+    </script>
+    
+    <!-- Embed Script -->
+    <script>
+        // This would be the embeddable script that users can add to their websites
+        (function(w, d, s, o) {
+            // This is just a placeholder for the actual embed script
+            console.log('Chatty embed script loaded');
+        })(window, document, 'script', {
+            buttonText: 'Talk to Chatty',
+            position: 'bottom-right',
+            theme: 'dark'
+        });
+    </script>
+</body>
+</html>

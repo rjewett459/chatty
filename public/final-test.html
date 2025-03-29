@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="en" class="dark-mode">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chatty - Voice-First AI Portal (Final Test)</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="dark-mode.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .test-controls {
+            padding: 20px;
+            background-color: rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+            border-radius: 8px;
+        }
+        
+        .test-controls h3 {
+            margin-top: 0;
+            margin-bottom: 15px;
+        }
+        
+        .test-button {
+            margin-right: 10px;
+            margin-bottom: 10px;
+            padding: 8px 16px;
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        
+        .test-button:hover {
+            background-color: var(--primary-dark);
+        }
+        
+        .test-log {
+            background-color: #1a1a1a;
+            color: #eee;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: monospace;
+            height: 200px;
+            overflow-y: auto;
+            margin-top: 15px;
+        }
+        
+        .test-log .success {
+            color: #4caf50;
+        }
+        
+        .test-log .error {
+            color: #f44336;
+        }
+        
+        .test-log .info {
+            color: #2196f3;
+        }
+        
+        .test-log .warning {
+            color: #ff9800;
+        }
+        
+        .debug-toggle {
+            margin-bottom: 15px;
+        }
+        
+        .debug-toggle label {
+            margin-left: 5px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body class="dark-mode">
+    <header>
+        <div class="container">
+            <div class="logo">
+                <h1>Chatty</h1>
+                <span class="tagline">Final Test Environment</span>
+            </div>
+        </div>
+    </header>
+    
+    <div class="container" style="padding-top: 100px;">
+        <div class="test-controls">
+            <h3>Test Controls</h3>
+            
+            <div class="debug-toggle">
+                <input type="checkbox" id="debug-mode" checked>
+                <label for="debug-mode">Enable Debug Mode</label>
+            </div>
+            
+            <button id="test-connection" class="test-button">Test Connection</button>
+            <button id="test-session" class="test-button">Test Session Creation</button>
+            <button id="test-cors" class="test-button">Test CORS</button>
+            <button id="test-error-handling" class="test-button">Test Error Handling</button>
+            <button id="test-all" class="test-button">Run All Tests</button>
+            
+            <div class="test-log" id="test-log">
+                Test log will appear here...
+            </div>
+        </div>
+        
+        <div class="chatty-container">
+            <div class="chatty-interface">
+                <div class="chatty-header">
+                    <div class="chatty-status">
+                        <span id="status-indicator" class="status-indicator"></span>
+                        <span id="status-text">Ready</span>
+                    </div>
+                </div>
+                <div class="transcript-container">
+                    <div id="transcript" class="transcript"></div>
+                </div>
+                <div class="chatty-controls">
+                    <button id="start-button" class="control-button primary">Start Conversation</button>
+                    <button id="stop-button" class="control-button secondary" disabled>End Conversation</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <script src="fixed-chatty-client.js"></script>
+    <script src="error-handling.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize variables
+            const serverUrl = 'https://3000-iftjw8vt7txltdc13l1ra-4bee712f.manus.computer';
+            let chattyClient = null;
+            let socket = null;
+            
+            // DOM Elements
+            const startButton = document.getElementById('start-button');
+            const stopButton = document.getElementById('stop-button');
+            const statusIndicator = document.getElementById('status-indicator');
+            const statusText = document.getElementById('status-text');
+            const transcript = document.getElementById('transcript');
+            const testLog = document.getElementById('test-log');
+            const debugModeCheckbox = document.getElementById('debug-mode');
+            
+            // Test buttons
+            const testConnectionBtn = document.getElementById('test-connection');
+            const testSessionBtn = document.getElementById('test-session');
+            const testCorsBtn = document.getElementById('test-cors');
+            const testErrorHandlingBtn = document.getElementById('test-error-handling');
+            const testAllBtn = document.getElementById('test-all');
+            
+            // Log function
+            function log(message, type = 'info') {
+                const logEntry = document.createElement('div');
+                logEntry.className = type;
+                logEntry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+                testLog.appendChild(logEntry);
+                testLog.scrollTop = testLog.scrollHeight;
+                console.log(`[${type}] ${message}`);
+            }
+            
+            // Clear log
+            function clearLog() {
+                testLog.innerHTML = '';
+                log('Log cleared', 'info');
+            }
+            
+            // Initialize Chatty Client
+            async function initializeChatty() {
+                if (chattyClient) {
+                    chattyClient.dispose();
+                }
+                
+                chattyClient = new ChattyClient();
+                
+                // Enable debug mode if checkbox is checked
+                if (debugModeCheckbox.checked) {
+                    chattyClient.enableDebug();
+                }
+                
+                try {
+                    log('Initializing Chatty client...', 'info');
+                    
+                    // Initialize with options
+                    await chattyClient.initialize(serverUrl, statusText, statusIndicator, transcript, {
+                        personality: 'cheerful_guide',
+                        sessionDuration: 60000, // 60 seconds
+                        ctaTriggerTime: 45000, // 45 seconds
+                        onCTATrigger: () => log('CTA triggered', 'info'),
+                        onSessionEnd: () => log('Session ended', 'info'),
+                        debugMode: debugModeCheckbox.checked
+                    });
+                    
+                    // Set up error handling
+                    if (window.ChattyErrorHandling) {
+                        window.ChattyErrorHandling.setupErrorHandling(chattyClient.socket, chattyClient);
+                        window.ChattyErrorHandling.setupFallbacks(chattyClient);
+                    }
+                    
+                    log('Chatty client initialized successfully', 'success');
+                    return true;
+                } catch (error) {
+                    log(`Failed to initialize Chatty client: ${error.message}`, 'error');
+                    return false;
+                }
+            }
+            
+            // Start Chatty Session
+            async function startChatty() {
+                if (!chattyClient) {
+                    const initialized = await initializeChatty();
+                    if (!initialized) return;
+                }
+                
+                try {
+                    log('Starting Chatty session...', 'info');
+                    await chattyClient.startSession();
+                    
+                    // Update UI
+                    startButton.disabled = true;
+                    stopButton.disabled = false;
+                    
+                    log('Chatty session started successfully', 'success');
+                } catch (error) {
+                    log(`Failed to start Chatty session: ${error.message}`, 'error');
+                }
+            }
+            
+            // Stop Chatty Session
+            function stopChatty() {
+                if (!chattyClient) return;
+                
+                log('Stopping Chatty session...', 'info');
+                chattyClient.endSession();
+                
+                // Update UI
+                startButton.disabled = false;
+                stopButton.disabled = true;
+                
+                log('Chatty session stopped', 'info');
+            }
+            
+            // Test connection
+            async function testConnection() {
+                clearLog();
+                log('Testing connection to server...', 'info');
+                
+                try {
+                    socket = io(serverUrl, {
+                        withCredentials: false,
+                        transports: ['websocket', 'polling'],
+                        timeout: 10000
+                    });
+                    
+                    await new Promise((resolve, reject) => {
+                        const timeout = setTimeout(() => {
+                            reject(new Error('Connection timeout'));
+                        }, 10000);
+                        
+                        socket.on('connect', () => {
+                            clearTimeout(timeout);
+                            resolve();
+                        });
+                        
+                        socket.on('connect_error', (error) => {
+                            clearTimeout(timeout);
+                            reject(error);
+                        });
+                    });
+                    
+                    log('Connection successful', 'success');
+                    
+                    // Test ping-pong
+                    log('Testing ping-pong...', 'info');
+                    
+                    let pongReceived = false;
+                    socket.on('pong', () => {
+                        pongReceived = true;
+                        log('Pong received from server', 'success');
+                    });
+                    
+                    socket.emit('ping');
+                    
+                    await new Promise(resolve => setTimeout(resolve, 2000));
+                    
+                    if (!pongReceived) {
+                        log('No pong received from server', 'warning');
+                    }
+                    
+                    // Disconnect
+                    socket.disconnect();
+                    log('Disconnected from server', 'info');
+                    
+                    return true;
+                } catch (error) {
+                    log(`Connection test failed: ${error.message}`, 'error');
+                    if (socket) socket.disconnect();
+                    return false;
+                }
+            }
+            
+            // Test session creation
+            async function testSession() {
+                clearLog();
+                log('Testing session creation...', 'info');
+                
+                try {
+                    if (!chattyClient) {
+                        const initialized = await initializeChatty();
+                        if (!initialized) throw new Error('Failed to initialize client');
+                    }
+                    
+                    await chattyClient.startSession();
+                    log('Session created successfully', 'success');
+                    
+                    // Wait a bit then end session
+                    await new Promise(resolve => setTimeout(resolve, 3000));
+                    
+                    chattyClient.endSession();
+                    log('Session ended', 'info');
+                    
+                    return true;
+                } catch (error) {
+                    log(`Session creation test failed: ${error.message}`, 'error');
+                    return false;
+                }
+            }
+            
+            // Test CORS
+            async function testCors() {
+                clearLog();
+                log('Testing CORS configuration...', 'info');
+                
+                try {
+                    // Test preflight request
+                    const preflightResponse = await fetch(serverUrl, {
+                        method: 'OPTIONS',
+                        headers: {
+                            'Origin': window.location.origin,
+                            'Access-Control-Request-Method': 'POST',
+                            'Access-Control-Request-Headers': 'Content-Type'
+                        }
+                    });
+                    
+                    if (preflightResponse.ok) {
+                        log('Preflight request successful', 'success');
+                    } else {
+                        log(`Preflight request failed: ${preflightResponse.status}`, 'warning');
+                    }
+                    
+                    // Test actual request
+                    const response = await fetch(`${serverUrl}/api/health`, {
+                        method: 'GET',
+                        headers: {
+                            'Origin': window.location.origin
+                        }
+                    });
+                    
+                    if (response.ok) {
+                        const data = await response.json();
+                        log(`API request successful: ${JSON.stringify(data)}`, 'success');
+                        return true;
+                    } else {
+                        log(`API request failed: ${response.status}`, 'error');
+                        return false;
+                    }
+                } catch (error) {
+                    log(`CORS test failed: ${error.message}`, 'error');
+                    return false;
+                }
+            }
+            
+            // Test error handling
+            async function testErrorHandling() {
+                clearLog();
+                log('Testing error handling...', 'info');
+                
+                try {
+                    if (!window.ChattyErrorHandling) {
+                        log('Error handling module not loaded', 'error');
+                        return false;
+                    }
+                    
+                    // Test retry mechanism
+                    log('Testing retry mechanism...', 'info');
+                    const retryHandler = new window.ChattyErrorHandling.RetryHandler(2, 100);
+                    
+                    let attempts = 0;
+                    const testFunction = async () => {
+                        attempts++;
+                        if (attempts < 2) {
+                            throw new Error('Test error');
+                        }
+                        return 'Success';
+                    };
+                    
+                    const result = await retryHandler.retry(testFunction);
+                    log(`Retry mechanism test: ${result} after ${attempts} attempts`, 'success');
+                    
+                    // Test fallback mechanism
+                    log('Testing fallback mechanisms...', 'info');
+                    const fallbacks = window.ChattyErrorHandling.setupFallbacks();
+                    
+                    if (fallbacks.startRecordingWithFallback && fallbacks.connectWithFallback) {
+                        log('Fallback mechanisms available', 'success');
+                    } else {
+                        log('Fallback mechanisms not properly set up', 'warning');
+                    }
+                    
+                    // Test promise handling
+                    log('Testing promise handling...', 'info');
+                    
+                    const testPromise = new Promise((resolve, reject) => {
+                        setTimeout(() => {
+                            resolve('Promise resolved');
+                        }, 500);
+                    });
+                    
+                    const promiseResult = await testPromise;
+                    log(`Promise handling test: ${promiseResult}`, 'success');
+                    
+                    return true;
+                } catch (error) {
+                    log(`Error handling test failed: ${error.message}`, 'error');
+                    return false;
+                }
+            }
+            
+            // Run all tests
+            async function runAllTests() {
+                clearLog();
+                log('Running all tests...', 'info');
+                
+                const connectionResult = await testConnection();
+                log(`Connection test: ${connectionResult ? 'PASSED' : 'FAILED'}`, connectionResult ? 'success' : 'error');
+                
+                const corsResult = await testCors();
+                log(`CORS test: ${corsResult ? 'PASSED' : 'FAILED'}`, corsResult ? 'success' : 'error');
+                
+                const errorHandlingResult = await testErrorHandling();
+                log(`Error handling test: ${errorHandlingResult ? 'PASSED' : 'FAILED'}`, errorHandlingResult ? 'success' : 'error');
+                
+                const sessionResult = await testSession();
+                log(`Session test: ${sessionResult ? 'PASSED' : 'FAILED'}`, sessionResult ? 'success' : 'error');
+                
+                const overallResult = connectionResult && corsResult && errorHandlingResult && sessionResult;
+                log(`Overall test result: ${overallResult ? 'PASSED' : 'FAILED'}`, overallResult ? 'success' : 'error');
+            }
+            
+            // Event Listeners
+            startButton.addEventListener('click', startChatty);
+            stopButton.addEventListener('click', stopChatty);
+            
+            testConnectionBtn.addEventListener('click', testConnection);
+            testSessionBtn.addEventListener('click', testSession);
+            testCorsBtn.addEventListener('click', testCors);
+            testErrorHandlingBtn.addEventListener('click', testErrorHandling);
+            testAllBtn.addEventListener('click', runAllTests);
+            
+            debugModeCheckbox.addEventListener('change', () => {
+                if (chattyClient) {
+                    chattyClient.debugMode = debugModeCheckbox.checked;
+                }
+            });
+            
+            // Initialize
+            initializeChatty();
+        });
+    </script>
+</body>
+</html>

@@ -7,11 +7,16 @@ const { v4: uuidv4 } = require('uuid');
 const OpenAI = require('openai');
 const path = require('path');
 const fs = require('fs');
+const WebSocket = require('ws');
 
 dotenv.config();
 
 const app = express();
 const httpServer = http.createServer(app);
+
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
 
 app.use(cors({
   origin: '*',
@@ -34,17 +39,6 @@ const io = new Server(httpServer, {
   maxHttpBufferSize: 1e6,
   perMessageDeflate: true
 });
-
-// ✅ Initialize OpenAI client with safe error handling
-let openai;
-try {
-  const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) throw new Error('OPENAI_API_KEY is not set');
-  openai = new OpenAI({ apiKey });
-  console.log('OpenAI client initialized');
-} catch (error) {
-  console.error('Error initializing OpenAI:', error);
-}
 
 const sessions = new Map();
 const SESSION_CLEANUP_INTERVAL = 5 * 60 * 1000;
@@ -69,53 +63,23 @@ io.on('connection', (socket) => {
     const sessionId = uuidv4();
     const personality = data.personality || 'cheerful_guide';
 
-    try {
-      const realtimeSession = await createOpenAIRealtimeSession(personality);
-      sessions.set(sessionId, {
-        id: sessionId,
-        socketId: socket.id,
-        personality,
-        createdAt: Date.now(),
-        lastActivity: Date.now(),
-        openaiSession: realtimeSession
+    sessions.set(sessionId, {
+      id: sessionId,
+      socketId: socket.id,
+      personality,
+      createdAt: Date.now(),
+      lastActivity: Date.now(),
+    });
+
+    socket.emit('session_created', { sessionId, personality });
+
+    setTimeout(() => {
+      const greeting = "Hey there! I'm Chatty – your personal AI guide. Want to see what ChatSites can do in under a minute?";
+      socket.emit('realtime_message', {
+        sessionId,
+        data: { type: 'transcript', data: greeting }
       });
-
-      socket.emit('session_created', { sessionId, personality });
-
-      setTimeout(() => {
-        const greeting = "Hey there! I'm Chatty – your personal AI guide. Want to see what ChatSites can do in under a minute?";
-        generateAndSendAudio(socket, sessionId, greeting);
-        socket.emit('realtime_message', {
-          sessionId,
-          data: { type: 'transcript', data: greeting }
-        });
-      }, 1000);
-    } catch (error) {
-      console.error('OpenAI session error:', error);
-      console.error('Creating mock session instead...');
-
-      const mockSessionId = 'mock-session-' + Date.now();
-      sessions.set(sessionId, {
-        id: sessionId,
-        socketId: socket.id,
-        personality,
-        createdAt: Date.now(),
-        lastActivity: Date.now(),
-        isMockSession: true,
-        mockSessionId
-      });
-
-      socket.emit('session_created', { sessionId, personality, isMockSession: true });
-
-      setTimeout(() => {
-        const greeting = "Hey there! I'm Chatty – your personal AI guide. Want to see what ChatSites can do in under a minute?";
-        generateAndSendAudio(socket, sessionId, greeting);
-        socket.emit('realtime_message', {
-          sessionId,
-          data: { type: 'transcript', data: greeting }
-        });
-      }, 1000);
-    }
+    }, 1000);
   });
 
   socket.on('send_audio', async (data) => {
@@ -130,11 +94,7 @@ io.on('connection', (socket) => {
     const session = sessions.get(sessionId);
     session.lastActivity = Date.now();
 
-    if (session.isMockSession) {
-      processMockAudio(socket, sessionId);
-    } else {
-      await processRealAudio(socket, sessionId, audio, session);
-    }
+    await processRealAudio(socket, sessionId, audio, session);
   });
 
   socket.on('end_session', (data) => {
@@ -173,57 +133,61 @@ io.on('connection', (socket) => {
   });
 });
 
-async function createOpenAIRealtimeSession(personality) {
-  await new Promise(resolve => setTimeout(resolve, 500));
-  return {
-    id: 'mock-openai-session-' + uuidv4(),
-    personality,
-    createdAt: Date.now()
-  };
-}
-
-function processMockAudio(socket, sessionId) {
-  const responses = [
-    "I understand what you're saying. Tell me more about that.",
-    "That's interesting! How can I help you with that?",
-    "I see. What specific information are you looking for?",
-    "Thanks for sharing. Is there anything else you'd like to know?",
-    "Got it. Let me think about how I can best assist you with that."
-  ];
-  const response = responses[Math.floor(Math.random() * responses.length)];
-
-  setTimeout(() => {
-    generateAndSendAudio(socket, sessionId, response);
-    socket.emit('realtime_message', {
-      sessionId,
-      data: { type: 'transcript', data: response }
-    });
-  }, 1000);
-}
-
 async function processRealAudio(socket, sessionId, audio, session) {
-  processMockAudio(socket, sessionId); // Placeholder for now
-}
+  const ws = new WebSocket('wss://api.openai.com/v1/realtime', {
+    headers: {
+      Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+    },
+  });
 
-function generateAndSendAudio(socket, sessionId, text) {
-  try {
-    const filePath = path.join(__dirname, 'public', 'sample.mp3');
-    const audioBuffer = fs.readFileSync(filePath);
-    const base64Audio = audioBuffer.toString('base64');
-    const audioUrl = `data:audio/mp3;base64,${base64Audio}`;
-
-    socket.emit('realtime_message', {
-      sessionId,
-      data: {
-        type: 'audio',
-        data: audioUrl
+  ws.on('open', () => {
+    ws.send(JSON.stringify({
+      type: 'session.create',
+      session: {
+        model: 'gpt-4o',
+        voice: 'nova',
       }
-    });
+    }));
 
-    console.log(`Audio sent for session ${sessionId}`);
-  } catch (err) {
-    console.error('Error generating audio:', err);
-  }
+    ws.send(JSON.stringify({
+      type: 'conversation.item.create',
+      item: {
+        type: 'message',
+        role: 'user',
+        content: [
+          {
+            type: 'input_audio',
+            audio: audio,
+          },
+        ]
+      }
+    }));
+
+    ws.send(JSON.stringify({ type: 'response.create' }));
+  });
+
+  ws.on('message', (message) => {
+    const data = JSON.parse(message);
+
+    if (data.type === 'response.audio.delta') {
+      socket.emit('realtime_message', {
+        sessionId,
+        data: {
+          type: 'audio',
+          data: `data:audio/mp3;base64,${data.delta}`
+        }
+      });
+    }
+    if (data.type === 'response.text.delta') {
+      socket.emit('realtime_message', {
+        sessionId,
+        data: {
+          type: 'transcript',
+          data: data.delta
+        }
+      });
+    }
+  });
 }
 
 function cleanupSessions() {

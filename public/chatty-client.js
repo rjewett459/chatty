@@ -43,13 +43,19 @@ class ChattyClient {
 
     this.realtimeSocket.onmessage = (event) => {
       const message = JSON.parse(event.data);
+      console.log("📨 Realtime message received:", message);
+
       if (message.type === "response.audio.delta") {
         const audioData = message.delta;
         if (audioData) {
           const audioBlob = this.base64ToBlob(audioData);
           const url = URL.createObjectURL(audioBlob);
           this.playAudio(url);
+        } else {
+          console.warn("⚠️ Audio delta received but empty");
         }
+      } else {
+        console.log("📝 Non-audio message:", message);
       }
     };
 
@@ -111,7 +117,16 @@ class ChattyClient {
       );
 
       this.realtimeSocket.send(JSON.stringify({ type: "input_audio_buffer.commit" }));
-      this.realtimeSocket.send(JSON.stringify({ type: "response.create" }));
+      this.realtimeSocket.send(
+        JSON.stringify({
+          type: "response.create",
+          options: {
+            response_type: "audio",
+            voice: "nova",
+            interrupt: true
+          }
+        })
+      );
     }
   }
 

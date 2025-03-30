@@ -10,14 +10,8 @@ const fs = require('fs');
 
 dotenv.config();
 
-// ✅ Initialize OpenAI client
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
-
 const app = express();
 const httpServer = http.createServer(app);
-
 
 app.use(cors({
   origin: '*',
@@ -41,6 +35,7 @@ const io = new Server(httpServer, {
   perMessageDeflate: true
 });
 
+// ✅ Initialize OpenAI client with safe error handling
 let openai;
 try {
   const apiKey = process.env.OPENAI_API_KEY;

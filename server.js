@@ -10,8 +10,14 @@ const fs = require('fs');
 
 dotenv.config();
 
+// ✅ Initialize OpenAI client
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
+
 const app = express();
 const httpServer = http.createServer(app);
+
 
 app.use(cors({
   origin: '*',

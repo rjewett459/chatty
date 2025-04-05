@@ -7,44 +7,19 @@
 <body>
   <h1>Talk to Chatty 🎙️</h1>
   <button id="start">Start Talking</button>
+
+  <!-- Include your client -->
+  <script src="chatty-client.js"></script>
   <script>
-    const socket = io(); // this connects to your running server
+    // Wait for DOM to be ready
+    window.addEventListener("DOMContentLoaded", () => {
+      const chatty = new ChattyClient();
 
-    let mediaRecorder;
-    let audioChunks = [];
-
-    document.getElementById('start').addEventListener('click', async () => {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      mediaRecorder = new MediaRecorder(stream);
-
-      mediaRecorder.addEventListener('dataavailable', event => {
-        audioChunks.push(event.data);
+      document.getElementById("start").addEventListener("click", async () => {
+        console.log("🚀 Starting Chatty...");
+        await chatty.initialize(); // If you need to pass an API key, pass it here
       });
-
-      mediaRecorder.addEventListener('stop', () => {
-        const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
-        audioChunks = [];
-
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          const base64Audio = reader.result.split(',')[1]; // Remove base64 header
-          socket.emit('user_audio', base64Audio); // Send to server
-        };
-        reader.readAsDataURL(audioBlob);
-      });
-
-      // Record for 5 seconds
-      mediaRecorder.start();
-      setTimeout(() => mediaRecorder.stop(), 5000);
-    });
-
-    // Receive base64 audio from server and play it
-    socket.on('bot_audio', (base64Audio) => {
-      const audio = new Audio(`data:audio/mp3;base64,${base64Audio}`);
-      audio.play();
     });
   </script>
-  <!-- Load Socket.IO -->
-  <script src="chatty-client.js"></script>
 </body>
 </html>

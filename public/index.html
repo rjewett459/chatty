@@ -46,9 +46,13 @@
   <button id="stop-btn" disabled>Stop</button>
   <div class="transcript" id="transcript"></div>
 
-  <!-- Load ChattyClient -->
+  <!-- ✅ Load Socket.IO client -->
+  <script src="/socket.io/socket.io.js"></script>
+
+  <!-- ✅ Load ChattyClient -->
   <script src="chatty-client.js"></script>
 
+  <!-- ✅ App logic -->
   <script>
     let chatty = null;
 
@@ -56,14 +60,12 @@
     const stopBtn = document.getElementById('stop-btn');
     const transcriptBox = document.getElementById('transcript');
 
-    const OPENAI_API_KEY = "sk-REPLACE_ME"; // ⚠️ Replace with a secure method in production!
-
     startBtn.addEventListener('click', async () => {
       startBtn.disabled = true;
       stopBtn.disabled = false;
 
       chatty = new ChattyClient();
-      await chatty.initialize(OPENAI_API_KEY);
+      await chatty.initialize();
 
       transcriptBox.innerHTML += `<div><em>🎤 Listening...</em></div>`;
     });

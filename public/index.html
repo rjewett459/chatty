@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Chatty - Realtime Voice AI</title>
+  <title>Jewett Agency - Realtime Voice AI</title>
   <style>
     body {
       margin: 0;
@@ -41,14 +41,13 @@
   </style>
 </head>
 <body>
-  <h1>Chatty - Realtime Voice AI</h1>
+  <h1>Jewett Agency - Realtime Voice AI</h1>
   <button id="start-btn">Start Talking</button>
   <button id="stop-btn" disabled>Stop</button>
   <div class="transcript" id="transcript"></div>
 
-  <!-- ✅ Load Socket.IO from CDN -->
+  <!-- ✅ Load Socket.IO from CDN (no integrity attribute) -->
   <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
-
 
   <!-- ✅ Load ChattyClient -->
   <script src="chatty-client.js"></script>

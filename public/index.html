@@ -46,6 +46,9 @@
   <button id="stop-btn" disabled>Stop</button>
   <div class="transcript" id="transcript"></div>
 
+  <!-- Load ChattyClient -->
+  <script src="chatty-client.js"></script>
+
   <script>
     let chatty = null;
 
@@ -53,7 +56,7 @@
     const stopBtn = document.getElementById('stop-btn');
     const transcriptBox = document.getElementById('transcript');
 
-    const OPENAI_API_KEY = "sk-..."; // Replace with your actual OpenAI API key
+    const OPENAI_API_KEY = "sk-REPLACE_ME"; // ⚠️ Replace with a secure method in production!
 
     startBtn.addEventListener('click', async () => {
       startBtn.disabled = true;
@@ -62,7 +65,7 @@
       chatty = new ChattyClient();
       await chatty.initialize(OPENAI_API_KEY);
 
-      transcriptBox.innerHTML += `<div><em>Listening...</em></div>`;
+      transcriptBox.innerHTML += `<div><em>🎤 Listening...</em></div>`;
     });
 
     stopBtn.addEventListener('click', () => {
@@ -72,14 +75,8 @@
       }
       startBtn.disabled = false;
       stopBtn.disabled = true;
-      transcriptBox.innerHTML += `<div><em>Stopped.</em></div>`;
+      transcriptBox.innerHTML += `<div><em>⏹️ Stopped.</em></div>`;
     });
-  </script>
-
-  <!-- Load ChattyClient inline (matches canvas) -->
-  <script>
-    // Paste the entire ChattyClient class code from the canvas here
-    // or load it externally if you saved it as a file like /chatty-client.js
   </script>
 </body>
 </html>

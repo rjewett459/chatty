@@ -33,8 +33,8 @@ class ChattyClient {
   }
 
   async connectToOpenAIRealtime() {
-    const url = "wss://api.openai.com/v1/realtime?model=gpt-4o-realtime-preview";
-    this.realtimeSocket = new WebSocket(url, ["realtime.v1"]);
+    this.socket = io(); // Connects to your server
+
 
     this.realtimeSocket.onopen = () => {
       console.log("✅ Connected to OpenAI Realtime API");

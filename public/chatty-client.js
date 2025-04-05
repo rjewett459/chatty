@@ -116,17 +116,20 @@ class ChattyClient {
         })
       );
 
-      this.realtimeSocket.send(JSON.stringify({ type: "input_audio_buffer.commit" }));
-      this.realtimeSocket.send(
-        JSON.stringify({
-          type: "response.create",
-          options: {
-            response_type: "audio",
-            voice: "nova",
-            interrupt: true
-          }
-        })
-      );
+      this.socket.on("realtime_message", (msg) => {
+  const { data } = msg;
+
+  if (data.type === "transcript") {
+    console.log("📝 Transcript:", data.data);
+    // Update UI
+  }
+
+  if (data.type === "audio") {
+    console.log("🔊 Audio received");
+    this.playAudio(data.data); // base64 audio string
+  }
+});
+
     }
   }
 

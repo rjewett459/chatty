@@ -1,7 +1,9 @@
 {
   "name": "chatty-voice-first-ai-portal",
   "version": "1.0.0",
-  "description": "Voice-First AI Portal optimized for low latency with OpenAI's realtime API",
+  "description": "Real-time voice-first AI assistant using OpenAI's GPT-4o streaming API",
+  "author": "Rick Jewett",
+  "license": "MIT"
   "main": "server.js",
   "scripts": {
     "start": "node server.js",

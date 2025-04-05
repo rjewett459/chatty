@@ -150,3 +150,4 @@ class ChattyClient {
 }
 
 window.ChattyClient = ChattyClient;
+

@@ -1,25 +1,19 @@
-// Enhanced client implementation with OpenAI Realtime API integration
-// Replaces socket.io audio with Realtime WebSocket voice interactions
-
 class ChattyClient {
   constructor() {
-    this.realtimeSocket = null;
+    this.socket = null;
     this.audioContext = null;
     this.stream = null;
     this.mediaRecorder = null;
     this.isListening = false;
     this.isSpeaking = false;
     this.sessionId = null;
-    this.apiKey = null;
-    this.transcript = [];
     this.audioQueue = [];
     this.audioPlayer = null;
   }
 
-  async initialize(apiKey) {
-    this.apiKey = apiKey;
+  async initialize() {
     this.setupAudio();
-    await this.connectToOpenAIRealtime();
+    this.connectToSocketServer();
   }
 
   setupAudio() {
@@ -32,104 +26,83 @@ class ChattyClient {
     });
   }
 
-  async connectToOpenAIRealtime() {
-    this.socket = io(); // Connects to your server
+  connectToSocketServer() {
+    this.socket = io(); // assumes same host as page
 
+    this.socket.on("connect", () => {
+      console.log("✅ Connected to Chatty Server");
+      this.socket.emit("create_session", {});
+    });
 
-    this.realtimeSocket.onopen = () => {
-      console.log("✅ Connected to OpenAI Realtime API");
+    this.socket.on("session_created", ({ sessionId }) => {
+      this.sessionId = sessionId;
+      console.log("🎉 Session started:", sessionId);
       this.startListening();
-    };
+    });
 
-    this.realtimeSocket.onmessage = (event) => {
-      const message = JSON.parse(event.data);
-      console.log("📨 Realtime message received:", message);
-
-      if (message.type === "response.audio.delta") {
-        const audioData = message.delta;
-        if (audioData) {
-          const audioBlob = this.base64ToBlob(audioData);
-          const url = URL.createObjectURL(audioBlob);
-          this.playAudio(url);
-        } else {
-          console.warn("⚠️ Audio delta received but empty");
+    this.socket.on("realtime_message", ({ sessionId, data }) => {
+      if (data.type === "transcript") {
+        console.log("📝 Transcript:", data.data);
+        const transcriptBox = document.getElementById("transcript");
+        if (transcriptBox) {
+          transcriptBox.innerHTML += `<div>${data.data}</div>`;
         }
-      } else {
-        console.log("📝 Non-audio message:", message);
       }
-    };
 
-    this.realtimeSocket.onerror = (err) => {
-      console.error("Realtime Socket error:", err);
-    };
-  }
+      if (data.type === "audio") {
+        this.playAudio(data.data); // already full base64 data URL
+      }
+    });
 
-  base64ToBlob(base64, mime = "audio/mpeg") {
-    const byteChars = atob(base64);
-    const byteNumbers = new Array(byteChars.length);
-    for (let i = 0; i < byteChars.length; i++) {
-      byteNumbers[i] = byteChars.charCodeAt(i);
-    }
-    const byteArray = new Uint8Array(byteNumbers);
-    return new Blob([byteArray], { type: mime });
-  }
-
-  playAudio(audioUrl) {
-    if (this.isSpeaking) {
-      this.audioQueue.push(audioUrl);
-    } else {
-      this.audioPlayer.src = audioUrl;
-      this.audioPlayer.play();
-      this.isSpeaking = true;
-    }
+    this.socket.on("session_error", (err) => {
+      console.error("❌ Session error:", err);
+    });
   }
 
   async startListening() {
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    this.stream = stream;
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      this.stream = stream;
 
-    this.mediaRecorder = new MediaRecorder(stream, {
-      mimeType: "audio/webm;codecs=opus"
+      this.mediaRecorder = new MediaRecorder(stream, {
+        mimeType: "audio/webm;codecs=opus"
+      });
+
+      this.mediaRecorder.ondataavailable = async (event) => {
+        if (event.data.size > 0) {
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            const base64 = reader.result.split(",")[1];
+            this.sendAudioToServer(base64);
+          };
+          reader.readAsDataURL(event.data);
+        }
+      };
+
+      this.mediaRecorder.start(100);
+      this.isListening = true;
+      console.log("🎤 Microphone streaming started");
+
+    } catch (err) {
+      console.error("🚫 Microphone access error:", err);
+    }
+  }
+
+  sendAudioToServer(base64Audio) {
+    if (!this.socket || !this.sessionId) return;
+    this.socket.emit("send_audio", {
+      sessionId: this.sessionId,
+      audio: base64Audio
     });
-
-    this.mediaRecorder.ondataavailable = async (event) => {
-      if (event.data.size > 0) {
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          const base64 = reader.result.split(",")[1];
-          this.sendAudioToOpenAI(base64);
-        };
-        reader.readAsDataURL(event.data);
-      }
-    };
-
-    this.mediaRecorder.start(100);
-    this.isListening = true;
   }
 
-  sendAudioToOpenAI(base64Audio) {
-    if (this.realtimeSocket && this.realtimeSocket.readyState === WebSocket.OPEN) {
-      this.realtimeSocket.send(
-        JSON.stringify({
-          type: "input_audio_buffer.append",
-          audio: base64Audio,
-        })
-      );
-
-      this.socket.on("realtime_message", (msg) => {
-  const { data } = msg;
-
-  if (data.type === "transcript") {
-    console.log("📝 Transcript:", data.data);
-    // Update UI
-  }
-
-  if (data.type === "audio") {
-    console.log("🔊 Audio received");
-    this.playAudio(data.data); // base64 audio string
-  }
-});
-
+  playAudio(base64AudioUrl) {
+    if (this.isSpeaking) {
+      this.audioQueue.push(base64AudioUrl);
+    } else {
+      this.audioPlayer.src = base64AudioUrl;
+      this.audioPlayer.play();
+      this.isSpeaking = true;
     }
   }
 
@@ -145,7 +118,10 @@ class ChattyClient {
 
   dispose() {
     this.stopListening();
-    if (this.realtimeSocket) this.realtimeSocket.close();
+    if (this.socket) {
+      this.socket.emit("end_session", { sessionId: this.sessionId });
+      this.socket.disconnect();
+    }
     if (this.audioContext) this.audioContext.close();
     this.audioQueue = [];
     this.sessionId = null;
@@ -153,4 +129,3 @@ class ChattyClient {
 }
 
 window.ChattyClient = ChattyClient;
-

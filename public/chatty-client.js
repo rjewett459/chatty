@@ -100,15 +100,11 @@ class ChattyClient {
     if (this.isSpeaking) {
       this.audioQueue.push(base64AudioUrl);
     } else {
-      console.log("📦 Playing audio of length:", base64AudioUrl.length); // Log the length
       this.audioPlayer.src = base64AudioUrl;
-      this.audioPlayer.play().catch(err => {
-        console.error("Error playing audio:", err);
-      });
+      this.audioPlayer.play();
       this.isSpeaking = true;
     }
   }
-
 
   stopListening() {
     if (this.mediaRecorder && this.mediaRecorder.state !== "inactive") {
@@ -132,5 +128,6 @@ class ChattyClient {
   }
 }
 
-window.ChattyClient = ChattyClient;
+console.log("📦 Playing audio of length:", base64AudioUrl.length);
 
+window.ChattyClient = ChattyClient;

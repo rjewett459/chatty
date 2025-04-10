@@ -102,6 +102,7 @@ class ChattyClient {
     } else {
       this.audioPlayer.src = base64AudioUrl;
       this.audioPlayer.play();
+      console.log("📦 Playing audio of length:", base64AudioUrl.length); // Log it here
       this.isSpeaking = true;
     }
   }
@@ -127,6 +128,6 @@ class ChattyClient {
     this.sessionId = null;
   }
 }
-console.log("📦 Playing audio of length:", base64AudioUrl.length);
 
 window.ChattyClient = ChattyClient;
+

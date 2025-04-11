@@ -96,15 +96,25 @@ class ChattyClient {
     });
   }
 
-  playAudio(base64AudioUrl) {
-    if (this.isSpeaking) {
-      this.audioQueue.push(base64AudioUrl);
-    } else {
-      this.audioPlayer.src = base64AudioUrl;
-      this.audioPlayer.play();
-      this.isSpeaking = true;
+  // Ensure base64AudioUrl is being assigned correctly
+this.socket.on("realtime_message", ({ sessionId, data }) => {
+    if (data.type === "audio") {
+        console.log("🎧 Audio data received:", data.data); // Log audio data to see if it's correct
+        this.playAudio(data.data); // Already full base64 data URL
     }
-  }
+});
+
+playAudio(base64AudioUrl) {
+    console.log("📦 Playing audio:", base64AudioUrl); // Ensure the base64 audio URL is valid before playing
+    if (this.isSpeaking) {
+        this.audioQueue.push(base64AudioUrl);
+    } else {
+        this.audioPlayer.src = base64AudioUrl;
+        this.audioPlayer.play();
+        this.isSpeaking = true;
+    }
+}
+
 
   stopListening() {
     if (this.mediaRecorder && this.mediaRecorder.state !== "inactive") {

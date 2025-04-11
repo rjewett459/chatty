@@ -128,6 +128,7 @@ class ChattyClient {
   }
 }
 
-console.log("📦 Playing audio of length:", base64AudioUrl.length);
+console.log("📦 Playing audio of length:", base64AudioUrl ? base64AudioUrl.length : "undefined");
+
 
 window.ChattyClient = ChattyClient;
